@@ -3,23 +3,39 @@ generator client {
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgres"
   url      = env("DATABASE_URL")
 }
 
 model Requerimento {
-  id                String @id @default(uuid())
-  nome_razao_social String
-  cpf_cnpj          String
-  inscricao         String
-  arquivo           Bytes  @db.MediumBlob
+  id                     String                  @id @default(uuid())
+  protocolo              String                  @unique
+  assunto                String
+  arquivo                String
+  status                 String
+  registro               DateTime
+  RequerimentoRequerente RequerimentoRequerente?
 }
 
-model Pessoa {
-  id String @id @default(uuid())
+model RequerimentoRequerente {
+  id             String @id @default(uuid())
+  requerimentoId String @unique
+  requerenteId   String @unique
 
-  enderecoId Endereco?
-  contatoId  Contato?
+  requerente   Requerente   @relation(fields: [requerenteId], references: [id])
+  requerimento Requerimento @relation(fields: [requerimentoId], references: [id])
+}
+
+model Requerente {
+  id                String @id @default(uuid())
+  empresa           String
+  cnpj              String
+  inscricaoEstadual String
+  responsavelLegal  String
+
+  enderecoId             Endereco?
+  contatoId              Contato?
+  RequerimentoRequerente RequerimentoRequerente?
 }
 
 model Endereco {
@@ -30,8 +46,9 @@ model Endereco {
   municipio  String
   uf         String
 
-  pessoaId String @unique
-  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
+  requerenteId String @unique
+
+  requerente Requerente @relation(fields: [requerenteId], references: [id])
 }
 
 model Contato {
@@ -40,31 +57,7 @@ model Contato {
   fax      String?
   email    String?
 
-  pessoaId String @unique
-  pessoa   Pessoa @relation(fields: [pessoaId], references: [id])
-}
+  requerenteId String @unique
 
-model Arquivo {
-  id        Int      @id @default(autoincrement())
-  nome      String
-  conteudo  Bytes
-  createdAt DateTime @default(now())
-}
-
-//-----------------------------------------------------
-
-model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
-  name  String?
-  posts Post[]
-}
-
-model Post {
-  id        Int     @id @default(autoincrement())
-  title     String
-  content   String?
-  published Boolean @default(false)
-  author    User    @relation(fields: [authorId], references: [id])
-  authorId  Int
+  requerente Requerente @relation(fields: [requerenteId], references: [id])
 }
