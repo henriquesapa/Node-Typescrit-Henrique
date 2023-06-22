@@ -15,15 +15,6 @@ export default async function restore(path: string): Promise<void> {
         const dateTime = moment(obj.registro, "YYYY-MM-DD HH:mm:ss").toDate();
 
 
-        const Requerente = await Prisma.requerente.create({
-            data: {
-                empresa: obj.empresa,
-                cnpj: obj.cnpj,
-                inscricaoEstadual: inscricao_estadual,
-                responsavelLegal: responsavel_legal,
-            }
-        })
-
         const requerimento = await Prisma.requerimento.create({
             data: {
                 protocolo: obj.protocolo,
@@ -31,10 +22,65 @@ export default async function restore(path: string): Promise<void> {
                 arquivo: obj.arquivo,
                 status: obj.status,
                 registro: dateTime,
+            },
+        });
+
+
+        const requerente = await Prisma.requerente.create({
+            data: {
+                empresa: obj.empresa,
+                cnpj: obj.cnpj.replace(/\D/g, "").substring(0, 14),// Remove todos os caracteres não numéricos do CNPJ,
+                inscricaoEstadual: inscricao_estadual.replace(/\D/g, ""),
+                responsavelLegal: responsavel_legal.toUpperCase(),
                 RequerimentoRequerente: {
-                    connect: { id: Requerente.id }
-                }
+                    create: {
+                        requerimento: { connect: { id: requerimento.id } },
+                    },
+                },
+            },
+        });
+
+        let endereco = await Prisma.endereco.findFirst({
+            where: {
+                cep: cep.replace(/\D/g, "").substring(0, 7),
+                logradouro: logradouro.toUpperCase(),
+                bairro: bairro.toUpperCase(),
+                municipio: obj.municipio.toUpperCase(),
+                uf: uf.substring(0, 2).toUpperCase(),
             }
         })
+        if (!endereco) {
+            const endereco = await Prisma.endereco.create({
+                data: {
+                    cep: cep.replace(/\D/g, "").substring(0, 7),
+                    logradouro: logradouro.toUpperCase(),
+                    bairro: bairro.toUpperCase(),
+                    municipio: obj.municipio.toUpperCase(),
+                    uf: uf.substring(0, 2).toUpperCase(),
+                    requerente: { connect: { id: requerente.id } },
+                },
+            });
+        }
+        let contato = await Prisma.contato.findFirst({
+            where: {
+                email,
+                telefone: telefone.replace(/\D/g, ""),
+                fax: fax.replace(/\D/g, "")
+            }
+        })
+
+        if (!contato) {
+            contato = await Prisma.contato.create({
+                data: {
+                    telefone: telefone.replace(/\D/g, ""),
+                    fax: fax.replace(/\D/g, ""),
+                    email: email,
+                    requerente: { connect: { id: requerente.id } },
+                },
+            });
+        }
+
+        console.log(obj)
     }
+
 }

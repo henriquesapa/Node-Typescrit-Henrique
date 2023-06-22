@@ -29,7 +29,7 @@ model RequerimentoRequerente {
 model Requerente {
   id                String @id @default(uuid())
   empresa           String
-  cnpj              String
+  cnpj              String @unique
   inscricaoEstadual String
   responsavelLegal  String
 
